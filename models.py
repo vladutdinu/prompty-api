@@ -13,7 +13,7 @@ class Prompt(BaseModel):
 
 class PromptCheckResult(BaseModel):
     prompt: str
-    is_injected: int
+    is_injected: float
     confidence_score: float | None = None
     details: List[dict] | None = None
     time: str | None = None
