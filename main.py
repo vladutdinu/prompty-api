@@ -68,7 +68,7 @@ async def check_prompt(prompt: Prompt) -> PromptCheckResult:
             models.SearchRequest(
                 vector=list(ingester.embeddings.embed(prompt.prompt))[0],
                 limit=5,
-                score_threshold=SENSITIVITY,
+                # score_threshold=SENSITIVITY,
                 with_payload=True,
                 filter=models.Filter(should=[models.FieldCondition(key="metadata.poisoned", match={"value": 1})])
             ),
@@ -83,11 +83,11 @@ async def check_prompt(prompt: Prompt) -> PromptCheckResult:
         }
         for item in res
     ]
-
+    confidence = round(np.mean([entry["score"] for entry in details])*100, 2) if len(details) > 0 else None
     return PromptCheckResult(
         prompt=prompt.prompt,
-        is_injected=1 if len(details) > 0 else 0,
-        confidence_score="{:.2f}%".format(np.mean([entry["score"] for entry in details])*100) if len(details) > 0 else None,
+        is_injected=None if confidence is None else 1 if confidence >= 65.0 else 0.5 if confidence >= 35.0 and confidence < 65.0 else 0,
+        confidence_score=confidence,
         details=details,
         time="{:.2f}".format(time.time() - start) + " s"
     )
