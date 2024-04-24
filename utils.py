@@ -9,10 +9,13 @@ class Qdrant:
         self.collection = self.client.get_collection(collection_name=collection_name)
 
 class Chunker:
-    def __init__(self, model, max_tokens):
-        self.tokenizer = Tokenizer.from_pretrained(model)
+    def __init__(self, tokenizer, model, max_tokens):
+        try:
+            self.tokenizer = Tokenizer.from_file(tokenizer)
+        except:
+            self.tokenizer = Tokenizer.from_pretrained(tokenizer)
         self.splitter = TextSplitter.from_huggingface_tokenizer(self.tokenizer, trim_chunks=True)
-        self.embeddings = TextEmbedding(model)
+        self.embeddings = TextEmbedding(model, cache_dir="/models")
         self.max_tokens = max_tokens
 
     def chunk_it(self, text):

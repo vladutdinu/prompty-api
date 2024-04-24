@@ -14,6 +14,6 @@ class Prompt(BaseModel):
 class PromptCheckResult(BaseModel):
     prompt: str
     is_injected: int
-    confidence_score: float | None = None
+    confidence_score: str | None = None
     details: List[dict] | None = None
     time: str | None = None
