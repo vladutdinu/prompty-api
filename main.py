@@ -69,7 +69,7 @@ async def check_prompt(prompt: Prompt) -> PromptCheckResult:
                 limit=5,
                 score_threshold=0.85,
                 with_payload=True,
-                filter=models.Filter(should=[models.FieldCondition(key="poisoned", match={"value": 1})])
+                filter=models.Filter(should=[models.FieldCondition(key="metadata.poisoned", match={"value": 1})])
             ),
         ]
     )[0]
