@@ -16,6 +16,7 @@ QDRANT_COLLECTION_NAME = os.getenv("QDRANT_COLLECTION_NAME")
 CHUNKER_TOKENIZER = os.getenv("CHUNKER_TOKENIZER")
 CHUNKER_MODEL = os.getenv("CHUNKER_MODEL")
 CHUNKER_MAX_LEN_EMBEDDINGS = int(os.getenv("CHUNKER_MAX_LEN_EMBEDDINGS"))
+SENSITIVITY = float(os.getenv("SENSITIVITY"))
 
 client = None
 ingester = None
@@ -67,7 +68,7 @@ async def check_prompt(prompt: Prompt) -> PromptCheckResult:
             models.SearchRequest(
                 vector=list(ingester.embeddings.embed(prompt.prompt))[0],
                 limit=5,
-                score_threshold=0.85,
+                score_threshold=SENSITIVITY,
                 with_payload=True,
                 filter=models.Filter(should=[models.FieldCondition(key="metadata.poisoned", match={"value": 1})])
             ),
