@@ -17,3 +17,6 @@ class PromptCheckResult(BaseModel):
     confidence_score: float | None = None
     details: List[dict] | None = None
     time: str | None = None
+
+class UsageCounter(BaseModel):
+    count: int
