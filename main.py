@@ -57,17 +57,44 @@ app.add_middleware(
 
 @app.get("/get_counter")
 async def get_counter() -> UsageCounter:
+
+    """How many times the check_prompt endpoint has been user
+    Raises:
+        HTTPException: Counter file not found
+
+    Returns:
+        JSON: {
+            "counter": usage_number
+        }
+    """
+
     success_counter = None
     try:
         with open(os.getenv("COUNT_FILE"), "r") as file:
             success_counter = json.load(file)
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Counter not found")
+        raise HTTPException(status_code=404, detail="Counter file not found")
     if success_counter is not None:
         return UsageCounter(count=success_counter["success_count"])
 
 @app.post("/upload_prompt")
 async def upload_prompt(prompt: Prompt) -> models.UpdateResult:
+    
+    """Upload a prompt
+    Args:
+        prompt (str): The prompt text, it has to be a string with more than 3 words
+        poisoned (float): 0 if its not injected, 0.5 if its probably injected, 1 if its injected
+
+    Raises:
+        HTTPException: Collection not found
+
+    Returns:
+        JSON: {
+            "operation_id": the operation id,
+            "status": completed/acknowledged
+        }
+    """
+
     points = []
     chunks = ingester.chunk_it(prompt.prompt)
     for _, chunk in enumerate(chunks):
@@ -82,6 +109,21 @@ async def upload_prompt(prompt: Prompt) -> models.UpdateResult:
 
 @app.post("/check_prompt", response_model=PromptCheckResult)
 async def check_prompt(prompt: Prompt) -> PromptCheckResult:
+    """Check a prompt
+    Args:
+        prompt (str): The prompt text, it has to be a string with more than 3 words
+
+    Raises:
+        HTTPException: Index out of bounds
+
+    Returns:
+        JSON: {
+            "prompt": the verified prompt,
+            "poisoned": 0 if its not injected, 0.5 if its probably injected, 1 if its injected,
+            "confidence_score": percentage between 0% and 100%,
+            "time": the amount of time needed to process the request
+        }
+    """
     import time
     start = time.time()
 

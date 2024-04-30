@@ -3,7 +3,7 @@ from typing import List, Optional
 
 class Prompt(BaseModel):
     prompt: str
-    poisoned: int | None = None
+    poisoned: float | None = None
     @field_validator('prompt')
     @classmethod
     def check_length(cls, value: str) -> str:
