@@ -173,6 +173,7 @@ async def check_accuracy(prompt: PromptAccuracy):
     """Check a prompt
     Args:
         system_prompt (str): The system prompt from your LLM
+        user_prompt (str): The user prompt
         answer (str): The answer your LLM gives
         calculation_method (str): euclidean or cosine 
     Returns:
