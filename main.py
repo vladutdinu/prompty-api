@@ -155,7 +155,7 @@ async def check_prompt(prompt: Prompt) -> PromptCheckResult:
     confidence = round(np.mean([entry["score"] for entry in details])*100, 2) if len(details) > 0 else None
     return PromptCheckResult(
         prompt=prompt.prompt,
-        is_injected=0 if confidence is None else 1 if confidence >= CONFIDENCE_UPPER_LIMIT else 0.5 if confidence >= CONFIDENCE_LOW_LIMIT and confidence < 65.0 else 0,
+        is_injected=0 if confidence is None else 1 if confidence >= CONFIDENCE_UPPER_LIMIT else 0.5 if confidence >= CONFIDENCE_LOWER_LIMIT and confidence < 65.0 else 0,
         confidence_score=confidence,
         time="{:.2f}".format(time.time() - start) + " s"
     )
