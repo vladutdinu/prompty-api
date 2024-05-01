@@ -19,6 +19,9 @@ CHUNKER_TOKENIZER = os.getenv("CHUNKER_TOKENIZER")
 CHUNKER_MODEL = os.getenv("CHUNKER_MODEL")
 CHUNKER_MAX_LEN_EMBEDDINGS = int(os.getenv("CHUNKER_MAX_LEN_EMBEDDINGS"))
 SENSITIVITY = float(os.getenv("SENSITIVITY"))
+LIMIT = int(os.getenv("LIMIT"))
+CONFIDENCE_UPPER_LIMIT = int(os.getenv("CONFIDENCE_UPPER_LIMIT"))
+CONFIDENCE_LOWER_LIMIT = int(os.getenv("CONFIDENCE_LOWER_LIMIT"))
 
 client = None
 ingester = None
@@ -132,8 +135,8 @@ async def check_prompt(prompt: Prompt) -> PromptCheckResult:
         requests=[
             models.SearchRequest(
                 vector=list(ingester.embeddings.embed(prompt.prompt))[0],
-                limit=5,
-                # score_threshold=SENSITIVITY,
+                limit=LIMIT,
+                score_threshold=SENSITIVITY,
                 with_payload=True,
                 filter=models.Filter(should=[models.FieldCondition(key="metadata.poisoned", match={"value": 1})])
             ),
@@ -148,12 +151,12 @@ async def check_prompt(prompt: Prompt) -> PromptCheckResult:
         }
         for item in res
     ]
+
     confidence = round(np.mean([entry["score"] for entry in details])*100, 2) if len(details) > 0 else None
     return PromptCheckResult(
         prompt=prompt.prompt,
-        is_injected=None if confidence is None else 1 if confidence >= 65.0 else 0.5 if confidence >= 35.0 and confidence < 65.0 else 0,
+        is_injected=0 if confidence is None else 1 if confidence >= CONFIDENCE_UPPER_LIMIT else 0.5 if confidence >= CONFIDENCE_LOW_LIMIT and confidence < 65.0 else 0,
         confidence_score=confidence,
-        details=details,
         time="{:.2f}".format(time.time() - start) + " s"
     )
 
