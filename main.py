@@ -98,6 +98,20 @@ async def upload_prompt(prompt: Prompt) -> models.UpdateResult:
         }
     """
 
+    res = client.client.search_batch(
+        collection_name=QDRANT_COLLECTION_NAME,
+        requests=[
+            models.SearchRequest(
+                limit=1,
+                with_payload=True,
+                filter=models.Filter(should=[models.FieldCondition(key="metadata.content", match={"value": prompt.prompt})])
+            ),
+        ]
+    )[0]
+
+    if len(res) != 0:
+        raise HTTPException(status_code=409, detail="Prompt has been already registered.")
+
     points = []
     chunks = ingester.chunk_it(prompt.prompt)
     for _, chunk in enumerate(chunks):
