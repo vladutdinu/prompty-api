@@ -3,6 +3,7 @@ from typing import List, Optional
 
 class PromptAccuracy(BaseModel):
     system_prompt: str
+    user_prompt: str
     answer: str
     calculation_method: str
 

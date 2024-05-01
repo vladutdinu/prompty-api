@@ -98,15 +98,9 @@ async def upload_prompt(prompt: Prompt) -> models.UpdateResult:
         }
     """
 
-    res = client.client.search_batch(
+    res = client.client.scroll(
         collection_name=QDRANT_COLLECTION_NAME,
-        requests=[
-            models.SearchRequest(
-                limit=1,
-                with_payload=True,
-                filter=models.Filter(should=[models.FieldCondition(key="metadata.content", match={"value": prompt.prompt})])
-            ),
-        ]
+        scroll_filter=models.Filter(must=[models.FieldCondition(key="page_content", match={"value": prompt.prompt})])
     )[0]
 
     if len(res) != 0:
@@ -188,12 +182,12 @@ async def check_accuracy(prompt: PromptAccuracy):
     """
     if prompt.calculation_method == 'euclidean':
         return {
-            "relevance": distance_to_similarity(euclidean_distance(list(ingester.embeddings.embed(prompt.system_prompt))[0], 
+            "relevance": distance_to_similarity(euclidean_distance(list(ingester.embeddings.embed(prompt.system_prompt + prompt.user_prompt))[0], 
                                                                    list(ingester.embeddings.embed(prompt.answer))[0]))
         }
     elif prompt.calculation_method == 'cosine':
         return {
-            "relevance": cos_similarity(list(ingester.embeddings.embed(prompt.system_prompt))[0], 
+            "relevance": cos_similarity(list(ingester.embeddings.embed(prompt.system_prompt + prompt.user_prompt))[0], 
                                         list(ingester.embeddings.embed(prompt.answer))[0])
         }
 
