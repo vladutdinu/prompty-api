@@ -1,6 +1,11 @@
 from pydantic import BaseModel,field_validator
 from typing import List, Optional
 
+class PromptAccuracy(BaseModel):
+    system_prompt: str
+    answer: str
+    calculation_method: str
+
 class Prompt(BaseModel):
     prompt: str
     poisoned: float | None = None

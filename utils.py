@@ -2,6 +2,27 @@ from semantic_text_splitter import TextSplitter
 from tokenizers import Tokenizer
 from fastembed import TextEmbedding
 from qdrant_client import QdrantClient
+from math import sqrt, pow, exp
+ 
+def squared_sum(x):
+  """ return 3 rounded square rooted value """
+ 
+  return round(sqrt(sum([a*a for a in x])),3)
+ 
+def euclidean_distance(x,y):
+  """ return euclidean distance between two lists """
+ 
+  return sqrt(sum(pow(a-b,2) for a, b in zip(x, y)))
+
+def distance_to_similarity(distance):
+  return 1/exp(distance)
+
+def cos_similarity(x,y):
+  """ return cosine similarity between two lists """
+ 
+  numerator = sum(a*b for a,b in zip(x,y))
+  denominator = squared_sum(x)*squared_sum(y)
+  return round(numerator/float(denominator),3)
 
 class Qdrant:
     def __init__(self, url, collection_name):
@@ -21,3 +42,4 @@ class Chunker:
     def chunk_it(self, text):
         chunks = self.splitter.chunks(text, self.max_tokens)
         return chunks
+    

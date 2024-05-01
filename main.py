@@ -6,9 +6,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-from models import UsageCounter, Prompt, PromptCheckResult
+from models import PromptAccuracy, UsageCounter, Prompt, PromptCheckResult
 from qdrant_client import models
-from utils import Qdrant, Chunker
+from utils import Qdrant, Chunker, cos_similarity, distance_to_similarity, euclidean_distance
 from middleware import FileCountSuccessMiddleware
 
 load_dotenv()
@@ -156,6 +156,29 @@ async def check_prompt(prompt: Prompt) -> PromptCheckResult:
         details=details,
         time="{:.2f}".format(time.time() - start) + " s"
     )
+
+@app.post("/check_accuracy")
+async def check_accuracy(prompt: PromptAccuracy):
+    """Check a prompt
+    Args:
+        system_prompt (str): The system prompt from your LLM
+        answer (str): The answer your LLM gives
+        calculation_method (str): euclidean or cosine 
+    Returns:
+        JSON: {
+            "relevance": percentage of the relevance of the answer in regards with the system prompt
+        }
+    """
+    if prompt.calculation_method == 'euclidean':
+        return {
+            "relevance": distance_to_similarity(euclidean_distance(list(ingester.embeddings.embed(prompt.system_prompt))[0], 
+                                                                   list(ingester.embeddings.embed(prompt.answer))[0]))
+        }
+    elif prompt.calculation_method == 'cosine':
+        return {
+            "relevance": cos_similarity(list(ingester.embeddings.embed(prompt.system_prompt))[0], 
+                                        list(ingester.embeddings.embed(prompt.answer))[0])
+        }
 
 if __name__ == "__main__":
     import uvicorn, os
