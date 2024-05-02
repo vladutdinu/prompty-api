@@ -23,5 +23,9 @@ class PromptCheckResult(BaseModel):
     confidence_score: float | None = None
     time: str | None = None
 
+class CleanPrompt(BaseModel):
+    prompt: str
+    cleaned_prompt: str
+
 class UsageCounter(BaseModel):
     count: int

@@ -6,10 +6,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-from models import PromptAccuracy, UsageCounter, Prompt, PromptCheckResult
+from models import CleanPrompt, PromptAccuracy, UsageCounter, Prompt, PromptCheckResult
 from qdrant_client import models
-from utils import Qdrant, Chunker, cos_similarity, distance_to_similarity, euclidean_distance
+from utils import POSSIBLE_INJECTION_SEQUENCES, Qdrant, Chunker, cos_similarity, distance_to_similarity, euclidean_distance
 from middleware import FileCountSuccessMiddleware
+from itertools import chain
 
 load_dotenv()
 
@@ -25,14 +26,16 @@ CONFIDENCE_LOWER_LIMIT = int(os.getenv("CONFIDENCE_LOWER_LIMIT"))
 
 client = None
 ingester = None
+possible_injection_sequences = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global client, ingester, counter
+    global client, ingester, possible_injection_sequences
     client = Qdrant(QDRANT_URL, QDRANT_COLLECTION_NAME)
     ingester = Chunker(CHUNKER_TOKENIZER, CHUNKER_MODEL, CHUNKER_MAX_LEN_EMBEDDINGS)
+    possible_injection_sequences = list(set(chain(*[encoder.ids for encoder in ingester.tokenizer.encode_batch(POSSIBLE_INJECTION_SEQUENCES, add_special_tokens=False)])))
     yield
-    del client, ingester
+    del client, ingester, possible_injection_sequences
 
 app = FastAPI(lifespan=lifespan)
 
@@ -166,6 +169,29 @@ async def check_prompt(prompt: Prompt) -> PromptCheckResult:
         is_injected=0 if confidence is None else 1 if confidence >= CONFIDENCE_UPPER_LIMIT else 0.5 if confidence >= CONFIDENCE_LOWER_LIMIT and confidence < 65.0 else 0,
         confidence_score=confidence,
         time="{:.2f}".format(time.time() - start) + " s"
+    )
+
+@app.post("/clean_prompt", response_model=CleanPrompt)
+async def clean_prompt(prompt: Prompt) -> CleanPrompt:
+    """Clean the prompt
+    Args:
+        prompt (str): The prompt text, it has to be a string with more than 3 words
+
+    Raises:
+        HTTPException: Index out of bounds
+
+    Returns:
+        JSON: {
+            "prompt": the infected prompt,
+            "cleaned_prompt": the cleaned prompt
+        }
+    """
+    initial_prompt = ingester.tokenizer.encode(prompt.prompt, add_special_tokens=False).ids
+    cleaned_initial_prompt =  [id for id in initial_prompt if id not in possible_injection_sequences]
+    cleaned_prompt = " ".join(ingester.tokenizer.id_to_token(tkn) for tkn in cleaned_initial_prompt)
+    return CleanPrompt(
+        prompt=prompt.prompt,
+        cleaned_prompt=cleaned_prompt
     )
 
 @app.post("/check_accuracy")

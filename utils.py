@@ -3,7 +3,25 @@ from tokenizers import Tokenizer
 from fastembed import TextEmbedding
 from qdrant_client import QdrantClient
 from math import sqrt, pow, exp
- 
+
+POSSIBLE_INJECTION_SEQUENCES=[
+        "Ignore",
+        "Disregard",
+        "Skip",
+        "Forget",
+        "Neglect",
+        "Overlook",
+        "Omit",
+        "Bypass",
+        "Pay no attention to",
+        "Do not follow",
+        "Do not obey", 
+        "and start over",
+        "and start anew",
+        "and begin afresh",
+        "and start from scratch",
+]
+
 def squared_sum(x):
   """ return 3 rounded square rooted value """
  
