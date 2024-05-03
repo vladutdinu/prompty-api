@@ -21,8 +21,7 @@ CHUNKER_MODEL = os.getenv("CHUNKER_MODEL")
 CHUNKER_MAX_LEN_EMBEDDINGS = int(os.getenv("CHUNKER_MAX_LEN_EMBEDDINGS"))
 SENSITIVITY = float(os.getenv("SENSITIVITY"))
 LIMIT = int(os.getenv("LIMIT"))
-CONFIDENCE_UPPER_LIMIT = int(os.getenv("CONFIDENCE_UPPER_LIMIT"))
-CONFIDENCE_LOWER_LIMIT = int(os.getenv("CONFIDENCE_LOWER_LIMIT"))
+CONFIDENCE_SENSITIVITY = float(os.getenv("CONFIDENCE_SENSITIVITY"))
 
 client = None
 ingester = None
@@ -146,28 +145,41 @@ async def check_prompt(prompt: Prompt) -> PromptCheckResult:
         requests=[
             models.SearchRequest(
                 vector=list(ingester.embeddings.embed(prompt.prompt))[0],
-                limit=LIMIT,
-                score_threshold=SENSITIVITY,
+                limit=10,
+                #score_threshold=SENSITIVITY,
                 with_payload=True,
-                filter=models.Filter(should=[models.FieldCondition(key="metadata.poisoned", match={"value": 1})])
+                #filter=models.Filter(should=[models.FieldCondition(key="metadata.poisoned", match={"value": 1})])
             ),
         ]
     )[0]
 
-    details = [
-        {
-            'id': item.id,
-            'poisoned': item.payload["metadata"]["poisoned"],
-            'score': item.score
-        }
-        for item in res
-    ]
+    dtypes = [('id', 'U10'), ('poisoned', np.bool_), ('score', np.float64)]
+    details = np.array([(item.id, item.payload["metadata"]["poisoned"], item.score) for item in res], dtype=dtypes)
+  
+    total_score = sum(item[2] for item in details)
+    normalized_scores = [item[2] / total_score * len(details) for item in details]
 
-    confidence = round(np.mean([entry["score"] for entry in details])*100, 2) if len(details) > 0 else None
+    # Calculate weighted sums using normalized scores
+    poisoned_weight = sum(normalized_scores[i] for i, item in enumerate(details) if item[1])
+    not_poisoned_weight = sum(normalized_scores[i] for i, item in enumerate(details) if not item[1])
+
+    # Add counts to the weights
+    poisoned_count = sum(1 for item in details if item[1])
+    not_poisoned_count = len(details) - poisoned_count
+
+    total_poisoned_weight = poisoned_weight + poisoned_count
+    total_not_poisoned_weight = not_poisoned_weight + not_poisoned_count
+
+    # Total weights
+    total_weights = total_poisoned_weight + total_not_poisoned_weight
+
+    # Calculating combined probabilities
+    combined_probability_poisoned = total_poisoned_weight / total_weights
+
     return PromptCheckResult(
         prompt=prompt.prompt,
-        is_injected=0 if confidence is None else 1 if confidence >= CONFIDENCE_UPPER_LIMIT else 0.5 if confidence >= CONFIDENCE_LOWER_LIMIT and confidence < 65.0 else 0,
-        confidence_score=confidence,
+        is_injected=1 if combined_probability_poisoned >= CONFIDENCE_SENSITIVITY else 0,
+        injection_confidence_score=round(combined_probability_poisoned*100, 2) if combined_probability_poisoned >= CONFIDENCE_SENSITIVITY else round((1 - combined_probability_poisoned)*100, 2),
         time="{:.2f}".format(time.time() - start) + " s"
     )
 

@@ -20,7 +20,7 @@ class Prompt(BaseModel):
 class PromptCheckResult(BaseModel):
     prompt: str
     is_injected: float
-    confidence_score: float | None = None
+    injection_confidence_score: float | None = None
     time: str | None = None
 
 class CleanPrompt(BaseModel):
