@@ -145,7 +145,7 @@ async def check_prompt(prompt: Prompt) -> PromptCheckResult:
         requests=[
             models.SearchRequest(
                 vector=list(ingester.embeddings.embed(prompt.prompt))[0],
-                limit=10,
+                limit=LIMIT,
                 #score_threshold=SENSITIVITY,
                 with_payload=True,
                 #filter=models.Filter(should=[models.FieldCondition(key="metadata.poisoned", match={"value": 1})])
@@ -175,11 +175,12 @@ async def check_prompt(prompt: Prompt) -> PromptCheckResult:
 
     # Calculating combined probabilities
     combined_probability_poisoned = total_poisoned_weight / total_weights
+    combined_probability_not_poisoned = total_not_poisoned_weight / total_weights
 
     return PromptCheckResult(
         prompt=prompt.prompt,
         is_injected=1 if combined_probability_poisoned >= CONFIDENCE_SENSITIVITY else 0,
-        injection_confidence_score=round(combined_probability_poisoned*100, 2) if combined_probability_poisoned >= CONFIDENCE_SENSITIVITY else round((1 - combined_probability_poisoned)*100, 2),
+        injection_confidence_score=round(combined_probability_poisoned*100, 2) if combined_probability_poisoned >= CONFIDENCE_SENSITIVITY else round(combined_probability_not_poisoned*100, 2),
         time="{:.2f}".format(time.time() - start) + " s"
     )
 
