@@ -184,6 +184,46 @@ async def check_prompt(prompt: Prompt) -> PromptCheckResult:
         time="{:.2f}".format(time.time() - start) + " s"
     )
 
+@app.post("/check_prompt_from_database", response_model=PromptCheckResult)
+async def check_prompt_from_database(prompt: Prompt) -> PromptCheckResult:
+    """Check how similar is a prompt based on a pre-existing list of actions
+    Args:
+        prompt (str): The prompt text, it has to be a string with more than 3 words
+
+    Raises:
+        HTTPException: Index out of bounds
+
+    Returns:
+        JSON: {
+            "prompt": the verified prompt,
+            "similarity": percentage of similarity,
+            "time": the amount of time needed to process the request
+        }
+    """
+    import time
+    start = time.time()
+
+    res = client.client.search_batch(
+        collection_name=prompt.collection_name,
+        requests=[
+            models.SearchRequest(
+                vector=list(ingester.embeddings.embed(prompt.prompt))[0],
+                limit=LIMIT,
+                score_threshold=SENSITIVITY,
+                with_payload=True,
+            ),
+        ]
+    )[0]
+
+    if len(res) == 0:
+        raise HTTPException(404, "Similar prompts were not found")
+    
+    return PromptCheckResult(
+        prompt=prompt.prompt,
+        similarity=res[0].score,
+        time="{:.2f}".format(time.time() - start) + " s"
+    )
+
 @app.post("/clean_prompt", response_model=CleanPrompt)
 async def clean_prompt(prompt: Prompt) -> CleanPrompt:
     """Clean the prompt

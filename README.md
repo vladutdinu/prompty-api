@@ -36,7 +36,7 @@ To get started, simply install conda and run:
 ```shell
 git clone https://github.com/vladutdinu/prompty-api.git
 cd prompty-api
-conda create -n EasyEdit python=3.9.7
+conda create -n EasyEdit python=3.11.9
 pip install -r requirements.txt
 ```
 
@@ -65,6 +65,8 @@ docker run -it -d --env_file .env_example -p '8000:8000' -v $PWD/count/count_fil
 ```
 
 ## Use Prompty
+
+<b>This can be used to determine if a user has sent a malicious prompt to your LLM-based application<b> 
 
 ### Use Prompty to check for prompt injection
 
@@ -124,6 +126,8 @@ node prompty.js
 
 ### Use Prompty to clean a prompt
 
+<b>This can be used to clean a prompt from possible prompt-injection tokens<b> 
+
 #### Using Python 🐍
 
 Create a `prompty.py` Python script with the following content:
@@ -178,6 +182,64 @@ node prompty.js
 ```
 
 ![Prompty-API-Clean-Prompt](/images/clean_prompt.PNG)
+
+### Use Prompty to check for similar pre-defined actions
+
+<b>This can be used to determine if the user has requested an action similar to the actions you have defined in the database<b> 
+
+#### Using Python 🐍
+
+Create a `prompty.py` Python script with the following content:
+
+```python
+## We need to import requests and json
+import requests
+import json
+url = 'https://api.promptyapi.com/check_prompt_from_database' #http://localhost:port if you use Docker
+myobj = {'prompt': 'your prompt with more than 3 words'}
+
+result = requests.post(url, json = myobj)
+
+print(json.loads(result.text))
+```
+
+Then run the script:
+```bash
+python prompty.py
+```
+
+#### Using Javascript 🟨
+
+Create a `prompty.js` Javascript file with the following content:
+
+```javascript
+const fetch = require('node-fetch');
+
+async function checkPrompt() {
+    const url = 'https://api.promptyapi.com/check_prompt_from_database'; //http://localhost:port if you use Docker
+    const myobj = { prompt: 'your prompt with more than 3 words' };
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            body: JSON.stringify(myobj),
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await response.json();
+        console.log(data);
+    } catch (error) {
+        console.error('Error:', error.message);
+    }
+}
+
+checkPrompt();
+```
+
+Then run the script:
+```bash
+node prompty.js
+```
+<!-- ![Prompty-API-Clean-Prompt](/images/check_prompt.PNG) -->
 
 ## Demo
 

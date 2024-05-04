@@ -1,4 +1,4 @@
-from pydantic import BaseModel,field_validator
+from pydantic import BaseModel, field_validator
 from typing import List, Optional
 
 class PromptAccuracy(BaseModel):
@@ -10,12 +10,18 @@ class PromptAccuracy(BaseModel):
 class Prompt(BaseModel):
     prompt: str
     poisoned: float | None = None
+    collection_name: str | None = None
     @field_validator('prompt')
     @classmethod
     def check_length(cls, value: str) -> str:
         if len(value.split()) <= 3:
             raise ValueError("Prompt must contain at least 3 words.")
         return value
+
+class PromptCheckSimilarityResult(BaseModel):
+    prompt: str
+    similarity: float
+    time: str | None = None
 
 class PromptCheckResult(BaseModel):
     prompt: str
