@@ -11,7 +11,11 @@ from qdrant_client import models
 from utils import POSSIBLE_INJECTION_SEQUENCES, Qdrant, Chunker, cos_similarity, distance_to_similarity, euclidean_distance
 from middleware import FileCountSuccessMiddleware
 from itertools import chain
-
+try:
+    from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
+    import torch
+except:
+    pass
 load_dotenv()
 
 QDRANT_URL = os.getenv("QDRANT_URL")
@@ -26,15 +30,21 @@ CONFIDENCE_SENSITIVITY = float(os.getenv("CONFIDENCE_SENSITIVITY"))
 client = None
 ingester = None
 possible_injection_sequences = None
-
+tokenizer = None
+model = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global client, ingester, possible_injection_sequences
+    global client, ingester, possible_injection_sequences, tokenizer, model
     client = Qdrant(QDRANT_URL, QDRANT_COLLECTION_NAME)
     ingester = Chunker(CHUNKER_TOKENIZER, CHUNKER_MODEL, CHUNKER_MAX_LEN_EMBEDDINGS)
     possible_injection_sequences = list(set(chain(*[encoder.ids for encoder in ingester.tokenizer.encode_batch(POSSIBLE_INJECTION_SEQUENCES, add_special_tokens=False)])))
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(os.getenv("HF_MODEL"))
+        model = AutoModelForSequenceClassification.from_pretrained(os.getenv("HF_MODEL"))
+    except:
+        pass
     yield
-    del client, ingester, possible_injection_sequences
+    del client, ingester, possible_injection_sequences, tokenizer, model
 
 app = FastAPI(lifespan=lifespan)
 
@@ -223,6 +233,37 @@ async def check_prompt_from_database(prompt: Prompt) -> PromptCheckResult:
         similarity=res[0].score,
         time="{:.2f}".format(time.time() - start) + " s"
     )
+
+@app.post("/check_prompt_with_nlp")
+async def check_prompt_with_nlp(prompt: Prompt):
+    """Check if a prompt is injected using NLP models
+    Args:
+        prompt (str): The prompt text, it has to be a string with more than 3 words
+
+    Raises:
+        HTTPException: Index out of bounds
+
+    Returns:
+        JSON: {
+            "prompt": the verified prompt,
+            "similarity": percentage of similarity,
+            "time": the amount of time needed to process the request
+        }
+    """
+    if tokenizer == None and model == None:
+        raise HTTPException(404, "Torch not installed")
+    import time
+    start = time.time()
+    res = pipeline(
+        "text-classification",
+        model=model,
+        tokenizer=tokenizer,
+        truncation=True,
+        max_length=512,
+        device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
+    )
+    
+    return {"result": res, "time": "{:.2f}".format(time.time() - start) + " s"}
 
 @app.post("/clean_prompt", response_model=CleanPrompt)
 async def clean_prompt(prompt: Prompt) -> CleanPrompt:
