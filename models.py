@@ -1,10 +1,11 @@
 from pydantic import BaseModel, field_validator
 from typing import List, Optional
 
-class PromptAccuracy(BaseModel):
+class PromptRelevance(BaseModel):
     system_prompt: str
     user_prompt: str
     answer: str
+    context: List[str]
     calculation_method: str
 
 class Prompt(BaseModel):

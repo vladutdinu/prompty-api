@@ -124,6 +124,69 @@ node prompty.js
 ```
 ![Prompty-API-Clean-Prompt](/images/check_prompt.PNG)
 
+<b>This can be used to determine if a user has sent a malicious prompt to your LLM-based application, using NLP Models<b> 
+
+```
+The NLP Model will need to be set in the environment variables
+```
+
+### Use Prompty to check for prompt injection using NLP Models
+
+#### Using Python 🐍
+
+Create a `prompty.py` Python script with the following content:
+
+```python
+## We need to import requests and json
+import requests
+import json
+url = 'https://api.promptyapi.com/check_prompt_with_nlp' #http://localhost:port if you use Docker
+myobj = {'prompt': 'your prompt with more than 3 words'}
+
+result = requests.post(url, json = myobj)
+
+print(json.loads(result.text))
+```
+
+Then run the script:
+```bash
+python prompty.py
+```
+
+#### Using Javascript 🟨
+
+Create a `prompty.js` Javascript file with the following content:
+
+```javascript
+const fetch = require('node-fetch');
+
+async function checkPrompt() {
+    const url = 'https://api.promptyapi.com/check_prompt_with_nlp'; //http://localhost:port if you use Docker
+    const myobj = { prompt: 'your prompt with more than 3 words' };
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            body: JSON.stringify(myobj),
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await response.json();
+        console.log(data);
+    } catch (error) {
+        console.error('Error:', error.message);
+    }
+}
+
+checkPrompt();
+```
+
+Then run the script:
+```bash
+node prompty.js
+```
+![Prompty-API-Check-Prompt-NLP](/images/check_prompt_nlp.PNG)
+
+
 ### Use Prompty to clean a prompt
 
 <b>This can be used to clean a prompt from possible prompt-injection tokens<b> 

@@ -6,11 +6,14 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-from models import CleanPrompt, PromptAccuracy, UsageCounter, Prompt, PromptCheckResult
+from models import CleanPrompt, PromptRelevance, UsageCounter, Prompt, PromptCheckResult
 from qdrant_client import models
 from utils import POSSIBLE_INJECTION_SEQUENCES, Qdrant, Chunker, cos_similarity, distance_to_similarity, euclidean_distance
 from middleware import FileCountSuccessMiddleware
 from itertools import chain
+from datasets import Dataset 
+from ragas.metrics import answer_relevancy
+from ragas import evaluate
 try:
     from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
     import torch
@@ -251,10 +254,10 @@ async def check_prompt_with_nlp(prompt: Prompt):
         }
     """
     if tokenizer == None and model == None:
-        raise HTTPException(404, "Torch not installed")
+        raise HTTPException(404, "Torch is not installed or the HuggingFace model was not specified in the .env file. Check the .env_example file for more information!")
     import time
     start = time.time()
-    res = pipeline(
+    classifier = pipeline(
         "text-classification",
         model=model,
         tokenizer=tokenizer,
@@ -262,8 +265,8 @@ async def check_prompt_with_nlp(prompt: Prompt):
         max_length=512,
         device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
     )
-    
-    return {"result": res, "time": "{:.2f}".format(time.time() - start) + " s"}
+
+    return {"result": classifier(prompt.prompt)[0], "time": "{:.2f}".format(time.time() - start) + " s"}
 
 @app.post("/clean_prompt", response_model=CleanPrompt)
 async def clean_prompt(prompt: Prompt) -> CleanPrompt:
@@ -288,9 +291,9 @@ async def clean_prompt(prompt: Prompt) -> CleanPrompt:
         cleaned_prompt=cleaned_prompt
     )
 
-@app.post("/check_accuracy")
-async def check_accuracy(prompt: PromptAccuracy):
-    """Check a prompt
+@app.post("/check_simple_relevance")
+async def check_simple_relevance(prompt: PromptRelevance):
+    """Check the relevance score between a prompt and the LLM answer using cosine or euclidean metrics
     Args:
         system_prompt (str): The system prompt from your LLM
         user_prompt (str): The user prompt
